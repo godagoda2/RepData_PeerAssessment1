@@ -7,19 +7,110 @@ output:
 
 
 ## Loading and preprocessing the data
-
-
-
+```{r}
+data <- read.csv("./repdata_data_activity/activity.csv")
+data <- transform(data,
+                  interval=as.character(formatC(interval,width=4,flag = "0")))
+```
 ## What is mean total number of steps taken per day?
-
-
+```{r}
+step_per_day <- as.data.frame(tapply(data$steps,data$date,sum))
+  colnames(step_per_day)<-c("total_steps")
+  hist(tapply(data$steps,data$date,sum),xlab = "steps per day",ylab = "",main = "")
+  
+  step_mean <- mean(step_per_day$total_steps, na.rm = TRUE)
+  step_median <-median(step_per_day$total_steps, na.rm = TRUE)
+  
+  print(paste("mean:",step_mean))
+  print(paste("median:",step_median))
+```
 
 ## What is the average daily activity pattern?
+
+steps increase in AM, decrease in PM, and few in midnight 
+
+```{r}
+steps_per_interval <- tapply(data$steps, data$interval, mean,na.rm=TRUE)
+  
+  steps_per_interval_df <-data.frame(
+    interval=names(steps_per_interval),
+    mean_steps=steps_per_interval)
+  
+    plot(steps_per_interval_df$interval,steps_per_interval_df$mean_steps,type="l",
+         xlab = "intarval",ylab = "mean of steps per interval",main="")
+```
 
 
 
 ## Imputing missing values
 
+count NAs:
+```{r}
+print(paste("NA's:",sum(is.na(data))))
+```
 
+NAs replace zero.
+```{r}
+data2 <- data
+data2[is.na(data2$steps),]<-0
+step_per_day2 <- as.data.frame(tapply(data2$steps,data2$date,sum))
+colnames(step_per_day2)<-c("total_steps")
+hist(tapply(data2$steps,data2$date,sum),xlab = "steps per day",ylab = "",main = "")
+  
+step_mean2 <- mean(step_per_day2$total_steps)
+step_median2 <-median(step_per_day2$total_steps)
+
+print(paste("mean:",step_mean2))
+print(paste("median:",step_median2))
+
+```
+Replacement from NA to zero makes difference value of mean and median. 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+```{r}
+data3 <- transform(data,
+  date=as.Date(date),
+  interval=as.character(formatC(interval,width=4,flag = "0")))
+
+day_of_week <- data.frame(weekdays(data3$date))
+
+data3 <- cbind(data3,day_of_week)  
+
+weekday <- data.frame(weekday="")
+
+data3<- cbind(data3,weekday)
+
+for (j in 1:nrow(data3)){
+  if (data3$weekdays.data3.date.[j] %in% c("月曜日","火曜日","水曜日","木曜日","金曜日")){
+    data3$weekday[j] <- "weekday"
+    }else{
+      data3$weekday[j] <- "weekend"
+      }
+  }
+library(dplyr)
+library(ggplot2)
+data3.subset1 <- data3 %>% filter(weekday == "weekday")
+data3.subset2 <- data3 %>% filter(weekday == "weekend")
+
+weekday_mean_step <- tapply(data3.subset1$steps,data3.subset1$interval,mean,na.rm = TRUE)
+weekend_mean_step <- tapply(data3.subset2$steps,data3.subset2$interval,mean,na.rm = TRUE)
+
+weekday_mean_step_df <-data.frame(interval=names(weekday_mean_step),
+                                  mean_step=weekday_mean_step,
+                                  day="weekday")
+weekend_mean_step_df <-data.frame(interval=names(weekend_mean_step),
+                                  mean_step=weekend_mean_step,
+                                  day="weekend")
+
+data_weekdays <- rbind(weekday_mean_step_df,weekend_mean_step_df)
+
+g <- ggplot(data=data_weekdays)
+g <- g + facet_wrap(~day,nrow=2,ncol=1)
+g <- g + geom_line(aes(x=interval,y=mean_step,group=day))
+
+g
+
+
+```
+Weekend interval steps average more than daytime weekdays.
